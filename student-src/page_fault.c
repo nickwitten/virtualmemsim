@@ -27,7 +27,6 @@
 void page_fault(vaddr_t address) {
     /* First, split the faulting address and locate the page table entry */
     vpn_t page_number = vaddr_vpn(address);
-    uint16_t offset = vaddr_offset(address);
     pte_t* page_table = (pte_t*)(mem + PTBR * PAGE_SIZE);
 
 
@@ -39,14 +38,14 @@ void page_fault(vaddr_t address) {
     /* Update the page table entry. Make sure you set any relevant bits. */
     page_table[page_number].pfn = free_pfn;
     page_table[page_number].valid = 1;
-    page_table[page_number].diry = 0;
+    page_table[page_number].dirty = 0;
 
 
     /* Update the frame table. Make sure you set any relevant bits. */
     frame_table[free_pfn].mapped = 1;
     frame_table[free_pfn].referenced = 1;
-    //frame_table[free_pfn].proc = 1;
-
+    frame_table[free_pfn].process = current_process;
+    frame_table[free_pfn].vpn = page_number;
 
 
     /* Initialize the page's memory. On a page fault, it is not enough
@@ -63,12 +62,12 @@ void page_fault(vaddr_t address) {
      * back, swap_write() will automatically allocate a swap entry.
      */
     uint8_t* frame_p = mem + free_pfn * PAGE_SIZE;
-    if (swap_exists(page_table[page_number])) {
-        swap_read(page_table[page_number], frame_p);
-    else {
+    if (swap_exists(&page_table[page_number])) {
+        swap_read(&page_table[page_number], frame_p);
+    } else {
         for (int i=0; i < PAGE_SIZE; i++) {
             frame_p[0] = 0;
         }
     }
-
+    stats.page_faults++;
 }

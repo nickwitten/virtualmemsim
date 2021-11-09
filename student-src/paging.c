@@ -6,6 +6,10 @@
  /* The frame table pointer. You will set this up in system_init. */
 fte_t *frame_table;
 
+void break_(void) {
+    return;
+}
+
 /*  --------------------------------- PROBLEM 2 --------------------------------------
     In this problem, you will initialize the frame table.
 
@@ -93,7 +97,9 @@ void proc_init(pcb_t *proc) {
 
     frame_table[frame_number].protected = 1;
     frame_table[frame_number].process = proc;
-
+    if (proc->pid == 11) {
+        break_();
+    }
 }
 
 /*  --------------------------------- PROBLEM 4 --------------------------------------
@@ -141,7 +147,7 @@ void context_switch(pcb_t *proc) {
     -----------------------------------------------------------------------------------
  */
 uint8_t mem_access(vaddr_t address, char rw, uint8_t data) {
-
+    stats.accesses++;
 
     /* Split the address and find the page table entry */
     vpn_t page_number = vaddr_vpn(address);
@@ -153,7 +159,8 @@ uint8_t mem_access(vaddr_t address, char rw, uint8_t data) {
     /* If an entry is invalid, just page fault to allocate a page for the page table. */
     if (!page_entry.valid) {
         page_fault(address);
-        return 0;
+        // If it's a write, do we need to just try again after fault?
+        //return 0;
     }
 
 
@@ -174,20 +181,21 @@ uint8_t mem_access(vaddr_t address, char rw, uint8_t data) {
         table entry.
     */
 
-    paddr_t physical_addr = (paddr_t)(mem + pframe * PAGE_SIZE);
-    phyical_addr += offset;
+    uint8_t* physical_addr = (uint8_t*)(mem + pframe * PAGE_SIZE);
+    physical_addr += offset;
 
-    word_t word;
+    uint8_t byte;
     /* Either read or write the data to the physical address
        depending on 'rw' */
     if (rw == 'r') {
-        word = *(word_t*)physical_addr;
+        byte = *(uint8_t*)physical_addr;
+        stats.reads++;
     } else {
-        *(word_t*)physical_addr = data;
-        word = data;
+        *(uint8_t*)physical_addr = data;
+        byte = data;
+        stats.writes++;
     }
-
-    return word;
+    return byte;
 }
 
 /*  --------------------------------- PROBLEM 8 --------------------------------------
@@ -205,17 +213,19 @@ uint8_t mem_access(vaddr_t address, char rw, uint8_t data) {
 void proc_cleanup(pcb_t *proc) {
     /* Look up the process's page table */
     pfn_t frame_num = proc->saved_ptbr;
-    pte_t *page_table = mem + frame_num * PAGE_SIZE;
+    pte_t *page_table = (pte_t*)(mem + frame_num * PAGE_SIZE);
 
     /* Iterate the page table and clean up each valid page */
     for (size_t i = 0; i < NUM_PAGES; i++) {
         if (page_table[i].valid) {
-            if (page_table[i].dirty) {
-                word_t* page = (word_t*)(mem + page_table[i].pfn * PAGE_SIZE);
-                swap_write(page_table[i], page);
+            // if (page_table[i].dirty) {
+            //     word_t* page = (word_t*)(mem + page_table[i].pfn * PAGE_SIZE);
+            //     swap_write(page_table[i], page);
+            // }
+            if (swap_exists(&page_table[i])) {
+                swap_free(&page_table[i]);
             }
-            swap_free(page_table[i]);
-            frame_table[page_table[i].pfn].mapped = 0
+            frame_table[page_table[i].pfn].mapped = 0;
         }
     }
 
