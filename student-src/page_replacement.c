@@ -41,14 +41,14 @@ pfn_t free_frame(void) {
         pfn_t victim_ptfn = frame_table[victim_pfn].process->saved_ptbr;
         vpn_t victim_vpn = frame_table[victim_pfn].vpn;
         pte_t* page_table = (pte_t*)(mem + victim_ptfn * PAGE_SIZE);
-        pte_t victim_pte = page_table[victim_vpn];
-        if (victim_pte.dirty) {
-            void* frame_p = mem + victim_pte.pfn * PAGE_SIZE;
-            swap_write(&victim_pte, frame_p);
-            victim_pte.dirty = 0;
+        pte_t* victim_pte = page_table+victim_vpn;
+        if (victim_pte->dirty) {
+            void* frame_p = mem + victim_pte->pfn * PAGE_SIZE;
+            swap_write(victim_pte, frame_p);
+            victim_pte->dirty = 0;
             stats.writebacks++;
         }
-        victim_pte.valid = 0;
+        victim_pte->valid = 0;
     }
 
 

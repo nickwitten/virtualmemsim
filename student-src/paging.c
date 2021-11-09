@@ -6,10 +6,6 @@
  /* The frame table pointer. You will set this up in system_init. */
 fte_t *frame_table;
 
-void break_(void) {
-    return;
-}
-
 /*  --------------------------------- PROBLEM 2 --------------------------------------
     In this problem, you will initialize the frame table.
 
@@ -97,9 +93,6 @@ void proc_init(pcb_t *proc) {
 
     frame_table[frame_number].protected = 1;
     frame_table[frame_number].process = proc;
-    if (proc->pid == 11) {
-        break_();
-    }
 }
 
 /*  --------------------------------- PROBLEM 4 --------------------------------------
@@ -154,10 +147,10 @@ uint8_t mem_access(vaddr_t address, char rw, uint8_t data) {
     uint16_t offset = vaddr_offset(address);
 
     pte_t* page_table = (pte_t*)(mem + PTBR * PAGE_SIZE);
-    pte_t page_entry = page_table[page_number];
+    pte_t* page_entry = page_table+page_number;
 
     /* If an entry is invalid, just page fault to allocate a page for the page table. */
-    if (!page_entry.valid) {
+    if (!page_entry->valid) {
         page_fault(address);
         // If it's a write, do we need to just try again after fault?
         //return 0;
@@ -166,7 +159,7 @@ uint8_t mem_access(vaddr_t address, char rw, uint8_t data) {
 
     /* Set the "referenced" bit to reduce the page's likelihood of eviction */
 
-    pfn_t pframe = page_entry.pfn;
+    pfn_t pframe = page_entry->pfn;
     frame_table[pframe].referenced = 1;
 
     /*
@@ -193,6 +186,7 @@ uint8_t mem_access(vaddr_t address, char rw, uint8_t data) {
     } else {
         *(uint8_t*)physical_addr = data;
         byte = data;
+        page_entry->dirty = 1;
         stats.writes++;
     }
     return byte;
