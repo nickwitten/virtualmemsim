@@ -66,7 +66,7 @@ void page_fault(vaddr_t address) {
         swap_read(&page_table[page_number], frame_p);
     } else {
         for (int i=0; i < PAGE_SIZE; i++) {
-            frame_p[0] = 0;
+            frame_p[i] = 0;
         }
     }
     stats.page_faults++;

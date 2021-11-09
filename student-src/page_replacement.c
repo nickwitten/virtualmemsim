@@ -51,8 +51,6 @@ pfn_t free_frame(void) {
         victim_pte->valid = 0;
     }
 
-
-
     /* Return the pfn */
     return victim_pfn;
 }
