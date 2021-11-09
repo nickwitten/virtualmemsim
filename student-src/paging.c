@@ -211,14 +211,14 @@ void proc_cleanup(pcb_t *proc) {
 
     /* Iterate the page table and clean up each valid page */
     for (size_t i = 0; i < NUM_PAGES; i++) {
+        if (swap_exists(page_table+i)) {
+            swap_free(page_table+i);
+        }
         if (page_table[i].valid) {
             // if (page_table[i].dirty) {
             //     word_t* page = (word_t*)(mem + page_table[i].pfn * PAGE_SIZE);
             //     swap_write(page_table[i], page);
             // }
-            if (swap_exists(&page_table[i])) {
-                swap_free(&page_table[i]);
-            }
             frame_table[page_table[i].pfn].mapped = 0;
         }
     }
